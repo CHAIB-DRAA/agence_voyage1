@@ -3,6 +3,8 @@ const router = express.Router();
 
 // Import du contrôleur (vérifie bien que ce fichier existe aussi dans ../controllers/)
 const quoteController = require('../controllers/quoteController');
+  
+router.post('/public', quoteController.createQuote);
 
 // --- DÉFINITION DES ROUTES ---
 
