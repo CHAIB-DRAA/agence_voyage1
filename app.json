@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "Omra Quote App",
-    "slug": "omra-quote-app",
+    "slug": "agencevoyage",
     "version": "1.0.0",
     "sdkVersion": "48.0.0",
     "platforms": [
@@ -11,8 +11,9 @@
     ],
     "extra": {
       "eas": {
-        "projectId": "419e21fb-a5ea-4803-8650-5ae35b1b1a79"
+        "projectId": "6fb68932-6923-4040-b84e-2c327cc93247"
       }
-    }
+    },
+    "owner": "mostafa27001"
   }
 }
