@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const hotelController = require('../controllers/HotelController');
 
+
 // GET /hotels
 router.get('/', hotelController.getHotels);
 
