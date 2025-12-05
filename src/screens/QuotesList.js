@@ -55,39 +55,22 @@ export default function QuotesList({ navigation, route }) {
   };
 
   const handleDelete = (id) => {
-    Alert.alert(
-      "Supprimer le devis ?",
-      "Cette action est définitive.",
-      [
-        { text: "Annuler", style: "cancel" },
-        { text: "Supprimer", style: "destructive", onPress: async () => {
-            try {
-              await api.deleteQuote(id);
-              loadQuotes();
-            } catch (e) {
-              Alert.alert("Erreur", "Impossible de supprimer.");
-            }
-          } 
-        }
-      ]
-    );
+    Alert.alert("Supprimer ?", "Action irréversible.", [
+      { text: "Annuler", style: "cancel" },
+      { text: "Supprimer", style: "destructive", onPress: async () => {
+          try { await api.deleteQuote(id); loadQuotes(); } 
+          catch (e) { Alert.alert("Erreur", "Impossible de supprimer."); }
+        } 
+      }
+    ]);
   };
 
   const handleEdit = (item) => {
-    navigation.navigate('AddEdit', { 
-      edit: true, 
-      quote: item,
-      username: filterUser, 
-      userRole: userRole 
-    });
+    navigation.navigate('AddEdit', { edit: true, quote: item, username: filterUser, userRole: userRole });
   };
 
   const handleDetails = (item) => {
-    navigation.navigate('Details', { 
-      quote: item,
-      userRole: userRole,
-      username: filterUser
-    });
+    navigation.navigate('Details', { quote: item, userRole: userRole, username: filterUser });
   };
 
   const filterData = (text, sourceData = allQuotes) => {
@@ -106,83 +89,71 @@ export default function QuotesList({ navigation, route }) {
     }
   };
 
-  // --- GESTION DES COULEURS SELON LE STATUT ---
-  const getStatusStyle = (status) => {
+  // --- STYLES DYNAMIQUES SELON STATUT ---
+  const getStatusConfig = (status) => {
     switch (status) {
-      case 'confirmed':
-        return { 
-          bg: 'rgba(46, 204, 113, 0.15)', // Vert sombre transparent
-          border: '#2ECC71', 
-          icon: 'check-circle',
-          label: 'مؤكد (Confirmé)'
-        };
-      case 'cancelled':
-        return { 
-          bg: 'rgba(231, 76, 60, 0.15)', // Rouge sombre transparent
-          border: '#E74C3C', 
-          icon: 'x-circle',
-          label: 'ملغى (Annulé)'
-        };
-      default: // pending
-        return { 
-          bg: '#101A2D', // Bleu nuit standard
-          border: 'rgba(255,255,255,0.05)', 
-          icon: 'clock',
-          label: 'في الانتظار (En cours)'
-        };
+      case 'confirmed': return { color: '#2ECC71', label: 'مؤكد', bg: 'rgba(46, 204, 113, 0.1)', icon: 'check-circle' };
+      case 'cancelled': return { color: '#E74C3C', label: 'ملغى', bg: 'rgba(231, 76, 60, 0.1)', icon: 'x-circle' };
+      default: return { color: '#F39C12', label: 'في الانتظار', bg: 'rgba(243, 156, 18, 0.1)', icon: 'clock' };
     }
   };
 
   const renderItem = ({ item }) => {
-    const statusStyle = getStatusStyle(item.status);
-
+    const status = getStatusConfig(item.status);
+    
     return (
-      <View style={[styles.cardContainer, { backgroundColor: statusStyle.bg, borderColor: statusStyle.border, borderWidth: 1 }]}>
+      <View style={[styles.cardContainer, { borderColor: status.color }]}>
         
         <TouchableOpacity 
           style={styles.cardMainArea} 
           onPress={() => handleDetails(item)}
           activeOpacity={0.7}
         >
-          {/* En-tête avec Date et Statut */}
+          {/* En-tête : Date & Badge Statut */}
           <View style={styles.cardHeader}>
-            <View style={{flexDirection:'row', alignItems:'center'}}>
-              <Text style={[styles.statusLabel, {color: statusStyle.border}]}>{statusStyle.label}</Text>
-              <Feather name={statusStyle.icon} size={14} color={statusStyle.border} style={{marginLeft: 4}} />
+            <View style={[styles.statusBadge, { backgroundColor: status.bg }]}>
+              <Text style={[styles.statusText, { color: status.color }]}>{status.label}</Text>
+              <Feather name={status.icon} size={12} color={status.color} style={{ marginLeft: 5 }} />
             </View>
             <Text style={styles.date}>{new Date(item.createdAt).toLocaleDateString('fr-FR')}</Text>
           </View>
 
-          <Text style={styles.destination} numberOfLines={1}>{item.destination || '---'}</Text>
-
-          <View style={styles.clientRow}>
-            <Text style={styles.clientName}>
-              {item.clientName || 'Client Inconnu'} 
-              {isAdmin && item.createdBy ? <Text style={styles.creatorLabel}> (par {item.createdBy})</Text> : null}
+          {/* Infos Principales */}
+          <View style={styles.mainInfo}>
+            <Text style={styles.clientName} numberOfLines={1}>
+              {item.clientName || 'Client Inconnu'}
             </Text>
-            <Feather name="user" size={14} color="#8A95A5" style={{marginLeft: 5}} />
+            <Text style={styles.destination}>{item.destination || '---'}</Text>
           </View>
 
-          <View style={styles.detailsRow}>
-            <View style={styles.priceBadge}>
-              <Text style={styles.priceText}>{item.totalAmount ? item.totalAmount + ' DA' : '0 DA'}</Text>
-            </View>
-            <View style={{flexDirection:'row', alignItems:'center'}}>
-               <Text style={styles.subText}>{item.nightsMakkah || 0} مكة • {item.nightsMedina || 0} المدينة</Text>
-               <Feather name="chevron-left" size={16} color="#556" style={{marginLeft:5}}/>
-            </View>
+          {/* Détails techniques (Créateur & Nuits) */}
+          <View style={styles.metaRow}>
+            {isAdmin && item.createdBy ? (
+              <Text style={styles.creatorText}>Par: {item.createdBy}</Text>
+            ) : <View />}
+            <Text style={styles.nightsText}>
+              {item.nightsMakkah || 0} ليالي مكة • {item.nightsMedina || 0} ليالي المدينة
+            </Text>
           </View>
+
+          {/* Prix */}
+          <View style={styles.priceRow}>
+            <Text style={styles.totalLabel}>الإجمالي</Text>
+            <Text style={styles.totalPrice}>{item.totalAmount ? parseInt(item.totalAmount).toLocaleString() : '0'} DA</Text>
+          </View>
+
         </TouchableOpacity>
 
+        {/* Barre d'Actions */}
         <View style={styles.actionBar}>
-          <TouchableOpacity onPress={() => handleDelete(item.id || item._id)} style={styles.actionBtnDelete}>
+          <TouchableOpacity onPress={() => handleDelete(item.id || item._id)} style={styles.actionBtn}>
             <Feather name="trash-2" size={18} color="#E74C3C" />
             <Text style={[styles.actionText, {color: '#E74C3C'}]}>حذف</Text>
           </TouchableOpacity>
           
-          <View style={styles.verticalDivider} />
+          <View style={styles.divider} />
           
-          <TouchableOpacity onPress={() => handleEdit(item)} style={styles.actionBtnEdit}>
+          <TouchableOpacity onPress={() => handleEdit(item)} style={styles.actionBtn}>
             <Feather name="edit-3" size={18} color="#F3C764" />
             <Text style={[styles.actionText, {color: '#F3C764'}]}>تعديل</Text>
           </TouchableOpacity>
@@ -202,7 +173,7 @@ export default function QuotesList({ navigation, route }) {
             <Feather name="arrow-right" size={24} color="#F3C764" />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>
-            {filterUser ? 'عروضي' : 'أرشيف العروض'}
+            {filterUser ? 'عروضي (Mes Devis)' : 'أرشيف العروض'}
           </Text>
         </View>
 
@@ -247,41 +218,48 @@ export default function QuotesList({ navigation, route }) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#050B14' },
+  
   headerContainer: { backgroundColor: '#050B14', paddingBottom: 15, paddingTop: 10, paddingHorizontal: 20, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.05)' },
   topBar: { flexDirection: 'row-reverse', alignItems: 'center', marginBottom: 15 },
   headerTitle: { flex: 1, color: '#F3C764', fontSize: 22, fontWeight: '800', textAlign: 'center', marginRight: -30 },
   backBtn: { padding: 8, borderRadius: 8, backgroundColor: 'rgba(255,255,255,0.05)' },
+  
   searchBarContainer: { flexDirection: 'row-reverse', alignItems: 'center', backgroundColor: '#101A2D', borderRadius: 12, paddingHorizontal: 12, height: 46, borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)' },
   searchInput: { flex: 1, color: '#FFF', fontSize: 16, marginRight: 10, height: '100%' },
+  
   listContent: { padding: 20, paddingBottom: 100 },
   
-  cardContainer: { borderRadius: 16, marginBottom: 16, overflow: 'hidden' },
-  
+  // --- CARD DESIGN ---
+  cardContainer: { backgroundColor: '#101A2D', borderRadius: 16, marginBottom: 16, borderWidth: 1, borderLeftWidth: 4, overflow: 'hidden', shadowColor: "#000", shadowOffset: {width: 0, height: 2}, shadowOpacity: 0.25, shadowRadius: 3.84, elevation: 5 },
   cardMainArea: { padding: 16 },
 
-  cardHeader: { flexDirection: 'row-reverse', justifyContent: 'space-between', width: '100%', marginBottom: 8, alignItems: 'center' },
-  destination: { color: '#FFF', fontSize: 18, fontWeight: '700', textAlign: 'right', marginBottom: 5 },
-  date: { color: '#556', fontSize: 12 },
-  statusLabel: { fontSize: 12, fontWeight: '600' },
-  
-  clientRow: { flexDirection: 'row-reverse', alignItems: 'center', marginBottom: 8 },
-  clientName: { color: '#AAA', fontSize: 14 },
-  creatorLabel: { color: '#E67E22', fontSize: 11, fontStyle: 'italic' },
+  cardHeader: { flexDirection: 'row-reverse', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
+  date: { color: '#556', fontSize: 12, fontWeight: '500' },
+  statusBadge: { flexDirection: 'row-reverse', alignItems: 'center', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
+  statusText: { fontSize: 12, fontWeight: 'bold' },
 
-  detailsRow: { flexDirection: 'row-reverse', alignItems: 'center', width: '100%', justifyContent: 'space-between', marginTop: 5 },
-  subText: { color: '#8A95A5', fontSize: 13, textAlign: 'right' },
-  priceBadge: { backgroundColor: 'rgba(243, 199, 100, 0.1)', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6 },
-  priceText: { color: '#F3C764', fontSize: 14, fontWeight: '700' },
+  mainInfo: { marginBottom: 10 },
+  clientName: { color: '#FFF', fontSize: 20, fontWeight: 'bold', textAlign: 'right', marginBottom: 4 },
+  destination: { color: '#8A95A5', fontSize: 14, textAlign: 'right' },
 
+  metaRow: { flexDirection: 'row-reverse', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
+  creatorText: { color: '#556', fontSize: 11, fontStyle: 'italic' },
+  nightsText: { color: '#8A95A5', fontSize: 12 },
+
+  priceRow: { flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'flex-start', marginTop: 5 },
+  totalLabel: { color: '#8A95A5', fontSize: 12, marginLeft: 8 },
+  totalPrice: { color: '#F3C764', fontSize: 22, fontWeight: 'bold' },
+
+  // --- ACTIONS ---
   actionBar: { flexDirection: 'row', borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.05)', backgroundColor: 'rgba(0,0,0,0.2)' },
-  actionBtnEdit: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', padding: 12 },
-  actionBtnDelete: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', padding: 12 },
+  actionBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', padding: 14 },
   actionText: { marginLeft: 8, fontWeight: '600', fontSize: 14 },
-  verticalDivider: { width: 1, backgroundColor: 'rgba(255,255,255,0.05)' },
+  divider: { width: 1, backgroundColor: 'rgba(255,255,255,0.05)' },
 
+  // --- EMPTY & LOADING ---
   emptyContainer: { alignItems: 'center', justifyContent: 'center', marginTop: 80 },
   emptyTitle: { color: '#666', fontSize: 18, fontWeight: '700', marginTop: 10 },
-  emptySub: { color: '#444', marginTop: 5 },
   loaderCenter: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(5,11,20,0.5)' },
+  
   fab: { position: 'absolute', bottom: 30, left: 30, width: 60, height: 60, borderRadius: 30, backgroundColor: '#F3C764', alignItems: 'center', justifyContent: 'center', shadowColor: '#F3C764', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.4, shadowRadius: 8, elevation: 8 },
 });

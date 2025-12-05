@@ -65,9 +65,14 @@ const QuoteSchema = new mongoose.Schema({
 
   hotelTotal: { type: String, default: '0' }, 
   totalAmount: { type: String, default: '0' }, 
+
+  advanceAmount: { type: String, default: '0' },
+remainingAmount: { type: String, default: '0' },
   
   notes: String,
   createdAt: { type: Date, default: Date.now }
+
+
 });
 
 module.exports = mongoose.model('Quote', QuoteSchema);

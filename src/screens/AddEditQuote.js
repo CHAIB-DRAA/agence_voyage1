@@ -1,8 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, 
-  Alert, SafeAreaView, KeyboardAvoidingView, Platform, StatusBar, 
-  Modal, FlatList, Image
+  View, 
+  Text, 
+  TextInput, 
+  TouchableOpacity, 
+  StyleSheet, 
+  ScrollView, 
+  Alert, 
+  SafeAreaView, 
+  KeyboardAvoidingView, 
+  Platform, 
+  StatusBar, 
+  Modal, 
+  FlatList, 
+  Image
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -36,6 +47,8 @@ const emptyQuote = {
   prices: { single: '0', double: '0', triple: '0', quad: '0' },
   totalAmount: '0',
   hotelTotal: '0',
+  advanceAmount: '0', 
+  remainingAmount: '0',
   notes: ''
 };
 
@@ -59,17 +72,15 @@ export default function AddEditQuote({ navigation, route }) {
     loadInitialData();
   }, [route.params]);
 
-  // --- CALCULATEUR AUTOMATIQUE ---
   useEffect(() => {
-    // On ne lance le calcul que si on a les hôtels ET que le devis est chargé
-    if (hotels.length > 0) {
-      calculateAutoPrices();
-    }
+    if (hotels.length > 0) calculateAutoPrices();
   }, [
     quote.hotelMakkah, quote.hotelMedina, quote.hotelJeddah,
     quote.nightsMakkah, quote.nightsMedina, quote.nightsJeddah,
-    quote.quantities, quote.flightPrice, quote.transportPrice, quote.visaPrice, 
-    quote.numberOfPeople, hotels
+    quote.quantities, quote.flightPrice, quote.transportPrice, 
+    quote.visaPrice, 
+    quote.numberOfPeople, quote.advanceAmount,
+    hotels
   ]);
 
   const calculateAutoPrices = () => {
@@ -77,7 +88,10 @@ export default function AddEditQuote({ navigation, route }) {
     const hotelMed = hotels.find(h => h.name === quote.hotelMedina);
     const hotelJed = hotels.find(h => h.name === quote.hotelJeddah);
 
-    const safeParse = (val) => parseInt(val) || 0;
+    const safeParse = (val) => {
+      const parsed = parseInt(val);
+      return isNaN(parsed) ? 0 : parsed;
+    };
     
     const nightsM = safeParse(quote.nightsMakkah);
     const nightsMed = safeParse(quote.nightsMedina);
@@ -87,6 +101,7 @@ export default function AddEditQuote({ navigation, route }) {
     const flightCost = safeParse(quote.flightPrice);
     const transportInterCost = safeParse(quote.transportPrice);
     const visaCost = safeParse(quote.visaPrice);
+    
     const totalFixedCosts = (flightCost + transportInterCost + visaCost) * numPeople;
 
     const getRate = (hotel, type) => safeParse(hotel?.prices?.[type]);
@@ -97,7 +112,6 @@ export default function AddEditQuote({ navigation, route }) {
 
     ['single', 'double', 'triple', 'quad'].forEach(type => {
       const qty = getQty(type);
-      
       const costMakkah = getRate(hotelM, type) * nightsM;
       const costMedina = getRate(hotelMed, type) * nightsMed;
       const costJeddah = getRate(hotelJed, type) * nightsJed;
@@ -110,20 +124,27 @@ export default function AddEditQuote({ navigation, route }) {
     });
 
     const grandTotal = totalHotelsOnly + totalFixedCosts;
+    const advance = safeParse(quote.advanceAmount);
+    const remaining = grandTotal - advance;
 
-    // On met à jour seulement si les prix ont changé pour éviter une boucle infinie
-    if (quote.totalAmount !== String(grandTotal)) {
-        setQuote(prev => ({
-          ...prev,
-          prices: newDisplayPrices,
-          hotelTotal: String(totalHotelsOnly),
-          totalAmount: String(grandTotal)
-        }));
-    }
+    setQuote(prev => ({
+      ...prev,
+      prices: newDisplayPrices,
+      hotelTotal: String(totalHotelsOnly),
+      totalAmount: String(grandTotal),
+      remainingAmount: String(remaining)
+    }));
   };
 
   const loadInitialData = async () => {
-    // 1. CHARGEMENT IMMÉDIAT DES DONNÉES (Correction du bug "page vide")
+    try {
+      const [hotelsData, settingsData] = await Promise.all([api.getHotels(), api.getSettings()]);
+      setHotels(hotelsData);
+      setTripOptions(settingsData);
+    } catch (error) {
+      console.error("Erreur chargement données:", error);
+    }
+
     if (isEditMode && route.params?.quote) {
       const incoming = route.params.quote;
       setQuote({
@@ -141,20 +162,13 @@ export default function AddEditQuote({ navigation, route }) {
         status: incoming.status || 'pending',
         nightsJeddah: incoming.nightsJeddah || '0',
         hotelJeddah: incoming.hotelJeddah || '',
-        // Garder l'ID est crucial pour la modification
-        id: incoming.id || incoming._id 
+        advanceAmount: incoming.advanceAmount || '0',
+        remainingAmount: incoming.remainingAmount || '0',
+        id: incoming.id || incoming._id,
+        createdBy: incoming.createdBy || ''
       });
     } else if (creatorUsername) {
       setQuote(prev => ({ ...prev, createdBy: creatorUsername }));
-    }
-
-    // 2. CHARGEMENT ASYNCHRONE DES HÔTELS (En arrière-plan)
-    try {
-      const [hotelsData, settingsData] = await Promise.all([api.getHotels(), api.getSettings()]);
-      setHotels(hotelsData);
-      setTripOptions(settingsData);
-    } catch (error) {
-      console.error("Erreur chargement données annexes", error);
     }
   };
 
@@ -164,16 +178,22 @@ export default function AddEditQuote({ navigation, route }) {
       Alert.alert('Erreur', 'Permission requise');
       return;
     }
-    let result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaType.Images,
-      allowsEditing: true,
-      aspect: [4, 3],
-      quality: 0.5,
-      base64: true,
-    });
-    if (!result.canceled) {
-      const base64Img = `data:image/jpeg;base64,${result.assets[0].base64}`;
-      setQuote(prev => ({ ...prev, passportImage: base64Img }));
+
+    try {
+      let result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaType.Images,
+        allowsEditing: true,
+        aspect: [4, 3],
+        quality: 0.3, // <--- QUALITÉ RÉDUITE POUR ÉVITER ERREUR PAYLOAD
+        base64: true,
+      });
+
+      if (!result.canceled) {
+        const base64Img = `data:image/jpeg;base64,${result.assets[0].base64}`;
+        setQuote(prev => ({ ...prev, passportImage: base64Img }));
+      }
+    } catch (error) {
+      console.error("Erreur ImagePicker:", error);
     }
   };
 
@@ -191,11 +211,10 @@ export default function AddEditQuote({ navigation, route }) {
       Alert.alert('Succès', 'Dossier enregistré');
       navigation.navigate('List', { filterUser: creatorUsername, userRole });
     } catch (e) {
-      Alert.alert('Erreur', 'Connexion serveur impossible');
+      Alert.alert('Erreur', 'Vérifiez votre connexion ou la taille de l\'image');
     }
   };
 
-  // UI Helpers
   const toggleMeal = (label) => setQuote(prev => { const m = prev.meals || []; return m.includes(label) ? { ...prev, meals: m.filter(x => x !== label) } : { ...prev, meals: [...m, label] }; });
   const setStatus = (s) => setQuote(prev => ({ ...prev, status: s }));
   const updateQuantity = (key, value) => setQuote(prev => ({ ...prev, quantities: { ...prev.quantities, [key]: value } }));
@@ -206,14 +225,14 @@ export default function AddEditQuote({ navigation, route }) {
   const selectHotel = (hotel) => { 
     if (targetCityForHotel === 'Makkah') setQuote(prev => ({ ...prev, hotelMakkah: hotel.name })); 
     else if (targetCityForHotel === 'Medina') setQuote(prev => ({ ...prev, hotelMedina: hotel.name })); 
-    else if (targetCityForHotel === 'Jeddah') setQuote(prev => ({ ...prev, hotelJeddah: hotel.name }));
+    else if (targetCityForHotel === 'Jeddah') setQuote(prev => ({ ...prev, hotelJeddah: hotel.name })); 
     setHotelModalVisible(false); 
   };
   
   const openGenericPicker = (field) => { setTargetFieldForGeneric(field); setGenericModalVisible(true); };
   const selectGenericOption = (value) => { setQuote(prev => ({ ...prev, [targetFieldForGeneric]: value })); setGenericModalVisible(false); };
-  
   const getOptionsList = () => { if (targetFieldForGeneric === 'destination') return tripOptions.destinations; if (targetFieldForGeneric === 'period') return tripOptions.periods; if (targetFieldForGeneric === 'transport') return tripOptions.transports; return []; };
+  const getModalTitle = () => targetFieldForGeneric === 'destination' ? 'الوجهة' : targetFieldForGeneric === 'period' ? 'الفترة' : 'الطيران';
   const filteredHotels = hotels.filter(h => h.city === targetCityForHotel);
   const parseDateString = (d) => d ? new Date(d.split('/')[2], d.split('/')[1] - 1, d.split('/')[0]) : new Date();
   const onDateChange = (event, selectedDate) => { if (Platform.OS === 'android') setActiveDatePicker(null); if (selectedDate) { const d = selectedDate.getDate().toString().padStart(2,'0'), m = (selectedDate.getMonth()+1).toString().padStart(2,'0'), y = selectedDate.getFullYear(); setQuote(prev => ({ ...prev, dates: { ...prev.dates, [activeDatePicker]: `${d}/${m}/${y}` } })); } };
@@ -235,7 +254,6 @@ export default function AddEditQuote({ navigation, route }) {
 
         <ScrollView contentContainerStyle={styles.scrollContent}>
           
-          {/* BARRE DE STATUT */}
           <View style={styles.statusContainer}>
             <TouchableOpacity style={[styles.statusBtn, quote.status === 'cancelled' && styles.statusCancelled]} onPress={() => setStatus('cancelled')}>
               <Text style={[styles.statusText, quote.status === 'cancelled' && {color:'#FFF'}]}>ملغى</Text>
@@ -248,14 +266,18 @@ export default function AddEditQuote({ navigation, route }) {
             </TouchableOpacity>
           </View>
 
-          {/* SECTION 1: CLIENT */}
           <View style={styles.card}>
             <SectionHeader title="معلومات العميل (Client)" icon="user" />
-            
             <View style={styles.rowReverse}>
               <TouchableOpacity style={styles.passportBox} onPress={pickImage}>
-                {quote.passportImage ? <Image source={{ uri: quote.passportImage }} style={styles.passportImg} /> : <Feather name="camera" size={24} color="#F3C764" />}
-                {!quote.passportImage && <Text style={styles.passportTxt}>Photo Passeport</Text>}
+                {quote.passportImage ? (
+                  <Image source={{ uri: quote.passportImage }} style={styles.passportImg} />
+                ) : (
+                  <>
+                    <Feather name="camera" size={24} color="#F3C764" />
+                    <Text style={styles.passportTxt}>Passeport</Text>
+                  </>
+                )}
               </TouchableOpacity>
               
               <View style={{flex: 1, marginRight: 10}}>
@@ -266,22 +288,16 @@ export default function AddEditQuote({ navigation, route }) {
             </View>
           </View>
 
-          {/* SECTION 2: LOGISTIQUE & VOL */}
           <View style={styles.card}>
             <SectionHeader title="الرحلة و الطيران (Vol & Transport)" icon="map" />
-            
             <View style={styles.rowReverse}>
               <View style={{flex:1, marginLeft:5}}><SelectField label="الوجهة" value={quote.destination} onPress={() => openGenericPicker('destination')} placeholder="Destination" /></View>
               <View style={{flex:1, marginRight:5}}><SelectField label="الموسم" value={quote.period} onPress={() => openGenericPicker('period')} placeholder="Période" /></View>
             </View>
 
             <View style={styles.rowReverse}>
-              <View style={{flex:1, marginLeft:5}}>
-                <SelectField label="شركة الطيران" value={quote.transport} onPress={() => openGenericPicker('transport')} placeholder="Compagnie" />
-              </View>
-              <View style={{flex:1, marginRight:5}}>
-                <InputField label="سعر التذكرة (DA)" value={quote.flightPrice} onChangeText={t => setQuote({...quote, flightPrice: t})} keyboardType="numeric" placeholder="0" />
-              </View>
+              <View style={{flex:1, marginLeft:5}}><SelectField label="شركة الطيران" value={quote.transport} onPress={() => openGenericPicker('transport')} placeholder="Compagnie" /></View>
+              <View style={{flex:1, marginRight:5}}><InputField label="سعر التذكرة (DA)" value={quote.flightPrice} onChangeText={t => setQuote({...quote, flightPrice: t})} keyboardType="numeric" placeholder="0" /></View>
             </View>
 
             <View style={styles.divider} />
@@ -290,24 +306,17 @@ export default function AddEditQuote({ navigation, route }) {
               <View style={{flex:1, marginLeft:5}}>
                 <Text style={styles.label}>نقل داخلي</Text>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{flexDirection:'row-reverse'}}>
-                   {tripOptions.intercity.map(t => (
-                     <SmallChip key={t._id} label={t.label} active={quote.transportMakkahMedina === t.label} onPress={() => setTransportInterCity(t.label)} />
-                   ))}
+                   {tripOptions.intercity.length > 0 ? tripOptions.intercity.map(t => (<MealChip key={t._id} label={t.label} active={quote.transportMakkahMedina === t.label} onPress={() => setTransportInterCity(t.label)} />)) : <Text style={{color:'#666'}}>...</Text>}
                 </ScrollView>
               </View>
-              <View style={{flex:0.6}}>
-                <InputField label="سعر النقل (DA)" value={quote.transportPrice} onChangeText={t => setQuote({...quote, transportPrice: t})} keyboardType="numeric" placeholder="0" />
-              </View>
+              <View style={{flex:0.6}}><InputField label="سعر النقل (DA)" value={quote.transportPrice} onChangeText={t => setQuote({...quote, transportPrice: t})} keyboardType="numeric" placeholder="0" /></View>
             </View>
             
             <InputField label="سعر التأشيرة (Visa) - للفرد" value={quote.visaPrice} onChangeText={t => setQuote({...quote, visaPrice: t})} keyboardType="numeric" placeholder="0" />
           </View>
 
-          {/* SECTION 3: HÔTELS (Makkah, Medina, Jeddah) */}
           <View style={styles.card}>
             <SectionHeader title="الإقامة (Hébergement)" icon="moon" />
-            
-            {/* Médine */}
             <View style={styles.hotelBlock}>
               <Text style={styles.cityTitle}>المدينة المنورة</Text>
               <SelectField label="" value={quote.hotelMedina} onPress={() => openHotelPicker('Medina')} placeholder="choisir hôtel..." />
@@ -317,8 +326,6 @@ export default function AddEditQuote({ navigation, route }) {
                  <View style={{flex:2}}><DateButton label="Check-Out" value={quote.dates.medinaCheckOut} onPress={() => setActiveDatePicker('medinaCheckOut')} /></View>
               </View>
             </View>
-
-            {/* Makkah */}
             <View style={styles.hotelBlock}>
               <Text style={styles.cityTitle}>مكة المكرمة</Text>
               <SelectField label="" value={quote.hotelMakkah} onPress={() => openHotelPicker('Makkah')} placeholder="choisir hôtel..." />
@@ -328,8 +335,6 @@ export default function AddEditQuote({ navigation, route }) {
                  <View style={{flex:2}}><DateButton label="Check-Out" value={quote.dates.makkahCheckOut} onPress={() => setActiveDatePicker('makkahCheckOut')} /></View>
               </View>
             </View>
-
-            {/* Jeddah */}
             <View style={styles.hotelBlock}>
               <Text style={styles.cityTitle}>جدة (Jeddah)</Text>
               <SelectField label="" value={quote.hotelJeddah} onPress={() => openHotelPicker('Jeddah')} placeholder="choisir hôtel..." />
@@ -339,10 +344,8 @@ export default function AddEditQuote({ navigation, route }) {
                  <View style={{flex:2}}><DateButton label="Check-Out" value={quote.dates.jeddahCheckOut} onPress={() => setActiveDatePicker('jeddahCheckOut')} /></View>
               </View>
             </View>
-
           </View>
 
-          {/* SECTION 4: CHAMBRES & REPAS */}
           <View style={styles.card}>
             <SectionHeader title="الغرف والإعاشة" icon="grid" />
             <Text style={styles.infoText}>Saisissez le nombre de chambres. Le prix affiché est celui de l'hôtel uniquement.</Text>
@@ -358,11 +361,27 @@ export default function AddEditQuote({ navigation, route }) {
             </View>
           </View>
 
+          <View style={[styles.card, {borderColor: '#F3C764', borderWidth:1}]}>
+            <SectionHeader title="المدفوعات (Paiement)" icon="dollar-sign" />
+            <View style={styles.rowReverse}>
+              <View style={{ flex: 1, marginLeft: 10 }}>
+                <InputField label="المبلغ المدفوع (Avance)" value={quote.advanceAmount} onChangeText={t => setQuote({...quote, advanceAmount: t})} keyboardType="numeric" placeholder="0" />
+              </View>
+              <View style={{ flex: 1 }}>
+                 <View style={{ marginBottom: 12, width: '100%' }}>
+                    <Text style={styles.label}>المتبقي (Reste)</Text>
+                    <View style={[styles.input, {backgroundColor: '#F3C764'}]}>
+                        <Text style={{color: '#050B14', fontWeight: 'bold', textAlign: 'center'}}>{quote.remainingAmount} DA</Text>
+                    </View>
+                 </View>
+              </View>
+            </View>
+          </View>
+
           <View style={styles.card}>
             <InputField label="ملاحظات (Notes)" value={quote.notes} onChangeText={t => setQuote({...quote, notes: t})} multiline />
           </View>
 
-          {/* TOTAL BAR */}
           <View style={styles.stickyFooter}>
             <View>
               <Text style={styles.footerLabel}>TOTAL PACKAGE</Text>
@@ -377,12 +396,7 @@ export default function AddEditQuote({ navigation, route }) {
         </ScrollView>
 
         {/* MODALS */}
-        <Modal visible={hotelModalVisible} animationType="slide" transparent={true}><View style={styles.modalOverlay}><View style={styles.modalContent}><View style={styles.modalHeader}><Text style={styles.modalTitle}>Sélection Hôtel ({targetCityForHotel})</Text><TouchableOpacity onPress={() => setHotelModalVisible(false)}><Feather name="x" size={24} color="#FFF" /></TouchableOpacity></View><FlatList data={hotels.filter(h => h.city === targetCityForHotel)} keyExtractor={item => item.id} renderItem={({ item }) => (<TouchableOpacity style={styles.hotelItem} onPress={() => { 
-          if (targetCityForHotel === 'Makkah') setQuote(prev => ({ ...prev, hotelMakkah: item.name })); 
-          else if (targetCityForHotel === 'Medina') setQuote(prev => ({ ...prev, hotelMedina: item.name })); 
-          else if (targetCityForHotel === 'Jeddah') setQuote(prev => ({ ...prev, hotelJeddah: item.name })); 
-          setHotelModalVisible(false); 
-        }}><Text style={styles.hotelItemName}>{item.name}</Text><Feather name="chevron-left" size={20} color="#F3C764" /></TouchableOpacity>)} /></View></View></Modal>
+        <Modal visible={hotelModalVisible} animationType="slide" transparent={true}><View style={styles.modalOverlay}><View style={styles.modalContent}><View style={styles.modalHeader}><Text style={styles.modalTitle}>Sélection Hôtel ({targetCityForHotel})</Text><TouchableOpacity onPress={() => setHotelModalVisible(false)}><Feather name="x" size={24} color="#FFF" /></TouchableOpacity></View><FlatList data={hotels.filter(h => h.city === targetCityForHotel)} keyExtractor={item => item.id} renderItem={({ item }) => (<TouchableOpacity style={styles.hotelItem} onPress={() => { if (targetCityForHotel === 'Makkah') setQuote(prev => ({ ...prev, hotelMakkah: item.name })); else if (targetCityForHotel === 'Medina') setQuote(prev => ({ ...prev, hotelMedina: item.name })); else if (targetCityForHotel === 'Jeddah') setQuote(prev => ({ ...prev, hotelJeddah: item.name })); setHotelModalVisible(false); }}><Text style={styles.hotelItemName}>{item.name}</Text><Feather name="chevron-left" size={20} color="#F3C764" /></TouchableOpacity>)} /></View></View></Modal>
         
         <Modal visible={genericModalVisible} animationType="slide" transparent={true}><View style={styles.modalOverlay}><View style={styles.modalContent}><View style={styles.modalHeader}><Text style={styles.modalTitle}>Sélection</Text><TouchableOpacity onPress={() => setGenericModalVisible(false)}><Feather name="x" size={24} color="#FFF" /></TouchableOpacity></View><FlatList data={targetFieldForGeneric === 'destination' ? tripOptions.destinations : targetFieldForGeneric === 'period' ? tripOptions.periods : tripOptions.transports} keyExtractor={item => item._id} renderItem={({ item }) => (<TouchableOpacity style={styles.hotelItem} onPress={() => { setQuote(prev => ({ ...prev, [targetFieldForGeneric]: item.label })); setGenericModalVisible(false); }}><Text style={styles.hotelItemName}>{item.label}</Text><Feather name="check" size={20} color={quote[targetFieldForGeneric] === item.label ? "#F3C764" : "transparent"} /></TouchableOpacity>)} /></View></View></Modal>
         
@@ -406,7 +420,7 @@ const RoomInput = ({ label, qty, price, onChange }) => (
     <View style={{ flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between' }}>
       <Text style={{ color: '#FFF', fontSize: 14, width: 80, textAlign: 'right' }}>{label}</Text>
       <TextInput 
-        value={qty} 
+        value={qty ? String(qty) : ''} // SÉCURITÉ : Conversion explicite
         onChangeText={onChange} 
         keyboardType="numeric" 
         style={styles.qtyInput} 
@@ -424,7 +438,7 @@ const InputField = ({ label, value, onChangeText, placeholder, keyboardType, mul
   <View style={{ marginBottom: 12, width: '100%' }}>
     <Text style={styles.label}>{label}</Text>
     <TextInput 
-      value={value} 
+      value={value ? String(value) : ''} // SÉCURITÉ : Conversion explicite
       onChangeText={onChangeText} 
       style={[styles.input, multiline && {height: 80, textAlignVertical: 'top'}]} 
       placeholder={placeholder} 
@@ -439,8 +453,8 @@ const InputField = ({ label, value, onChangeText, placeholder, keyboardType, mul
 const SelectField = ({ label, value, onPress, placeholder }) => (
   <View style={{ marginBottom: 12, width: '100%' }}>
     <Text style={styles.label}>{label}</Text>
-    <TouchableOpacity onPress={onPress} style={styles.selectBtn}>
-      <Text style={{ color: value ? '#FFF' : '#444', fontSize: 14 }}>{value || placeholder}</Text>
+    <TouchableOpacity onPress={onPress} style={styles.hotelSelectBtn}>
+      <Text style={[styles.hotelSelectText, !value && { color: 'rgba(255,255,255,0.3)' }]}>{value || placeholder}</Text>
       <Feather name="chevron-down" size={18} color="#F3C764" />
     </TouchableOpacity>
   </View>
@@ -449,8 +463,8 @@ const SelectField = ({ label, value, onPress, placeholder }) => (
 const DateButton = ({ label, value, onPress }) => (
   <View style={{ marginBottom: 12 }}>
     <Text style={styles.label}>{label}</Text>
-    <TouchableOpacity onPress={onPress} style={styles.selectBtn}>
-      <Text style={{ color: value ? '#FFF' : '#444', fontSize: 13 }}>{value || 'JJ/MM/AAAA'}</Text>
+    <TouchableOpacity onPress={onPress} style={styles.dateBtn}>
+      <Text style={[styles.dateBtnText, !value && { color: 'rgba(255,255,255,0.2)' }]}>{value || 'JJ/MM/AAAA'}</Text>
       <Feather name="calendar" size={14} color="#F3C764" />
     </TouchableOpacity>
   </View>
@@ -474,54 +488,47 @@ const styles = StyleSheet.create({
   headerTitle: { color: '#FFF', fontSize: 18, fontWeight: 'bold' },
   headerSub: { color: '#F3C764', fontSize: 12 },
   backButton: { padding: 5 },
-  
   scrollContent: { padding: 15, paddingBottom: 150 },
-  
   card: { backgroundColor: '#101A2D', borderRadius: 12, padding: 15, marginBottom: 15, borderWidth: 1, borderColor: '#222' },
-  
   statusContainer: { flexDirection: 'row-reverse', justifyContent: 'space-between', marginBottom: 15, gap: 10 },
   statusBtn: { flex: 1, padding: 10, borderRadius: 8, borderWidth: 1, borderColor: '#444', alignItems: 'center' },
   statusConfirmed: { backgroundColor: '#2ECC71', borderColor: '#2ECC71' },
   statusPending: { backgroundColor: '#F39C12', borderColor: '#F39C12' },
   statusCancelled: { backgroundColor: '#E74C3C', borderColor: '#E74C3C' },
   statusText: { color: '#888', fontSize: 12, fontWeight: 'bold' },
-
   label: { color: '#888', fontSize: 12, marginBottom: 5, textAlign: 'right' },
   input: { backgroundColor: '#09121F', color: '#FFF', borderRadius: 8, padding: 12, borderWidth: 1, borderColor: '#333', fontSize: 14 },
   selectBtn: { backgroundColor: '#09121F', borderRadius: 8, padding: 12, borderWidth: 1, borderColor: '#333', flexDirection: 'row-reverse', justifyContent: 'space-between', alignItems: 'center' },
   qtyInput: { backgroundColor: '#09121F', color: '#FFF', borderRadius: 8, padding: 8, width: 60, textAlign: 'center', borderWidth: 1, borderColor: '#333' },
-
   rowReverse: { flexDirection: 'row-reverse' },
-  
   passportBox: { width: 80, height: 80, borderRadius: 10, borderStyle: 'dashed', borderWidth: 1, borderColor: '#F3C764', alignItems: 'center', justifyContent: 'center', marginLeft: 10 },
   passportImg: { width: '100%', height: '100%', borderRadius: 10 },
   passportTxt: { color: '#F3C764', fontSize: 10, textAlign: 'center', marginTop: 4 },
-
   mealsContainer: { flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 8 },
   chip: { paddingVertical: 8, paddingHorizontal: 12, borderRadius: 20, borderWidth: 1, borderColor: '#444' },
   chipActive: { backgroundColor: '#F3C764', borderColor: '#F3C764' },
   chipText: { color: '#CCC', fontSize: 12 },
-  
   smallChip: { paddingVertical: 6, paddingHorizontal: 10, borderRadius: 6, borderWidth: 1, borderColor: '#333', marginRight: 8 },
   smallChipText: { color: '#AAA', fontSize: 11 },
-
   hotelBlock: { marginBottom: 15, paddingBottom: 15, borderBottomWidth: 1, borderBottomColor: '#222' },
   cityTitle: { color: '#FFF', fontSize: 14, fontWeight: 'bold', marginBottom: 8, textAlign: 'right' },
-  
   infoText: { color: '#666', fontSize: 11, textAlign: 'right', marginBottom: 10, fontStyle: 'italic' },
   divider: { height: 1, backgroundColor: '#333', marginVertical: 15 },
-
   stickyFooter: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: '#101A2D', padding: 20, borderTopWidth: 1, borderTopColor: '#F3C764', flexDirection: 'row-reverse', justifyContent: 'space-between', alignItems: 'center' },
   footerLabel: { color: '#888', fontSize: 12 },
   footerAmount: { color: '#FFF', fontSize: 24, fontWeight: 'bold' },
   saveBtn: { backgroundColor: '#F3C764', flexDirection: 'row-reverse', paddingHorizontal: 20, paddingVertical: 12, borderRadius: 10, alignItems: 'center', gap: 8 },
   saveText: { color: '#050B14', fontWeight: 'bold' },
-  
-  // Modals
+  hotelSelectBtn: { backgroundColor: '#050B14', padding: 12, borderRadius: 10, borderWidth: 1, borderColor: '#F3C764', marginBottom: 15, flexDirection: 'row-reverse', justifyContent: 'space-between', alignItems: 'center' },
+  hotelSelectText: { color: '#FFF', fontSize: 15, fontWeight: '600' },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.8)', justifyContent: 'flex-end' },
   modalContent: { backgroundColor: '#101A2D', borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, maxHeight: '70%' },
   modalHeader: { flexDirection: 'row-reverse', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
   modalTitle: { color: '#FFF', fontSize: 18, fontWeight: 'bold' },
   hotelItem: { padding: 15, borderBottomWidth: 1, borderColor: '#333', flexDirection: 'row-reverse', justifyContent: 'space-between' },
   hotelItemName: { color: '#FFF', fontSize: 16, textAlign: 'right' },
+  hotelItemSub: { color: '#8A95A5', fontSize: 13, marginTop: 4, textAlign: 'right' },
+  creatorBadge: { flexDirection: 'row-reverse', alignItems: 'center', backgroundColor: '#F3C764', alignSelf: 'flex-end', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 10, marginBottom: 10 },
+  creatorText: { color: '#050B14', fontSize: 12, fontWeight: 'bold', marginLeft: 5 },
 });
+

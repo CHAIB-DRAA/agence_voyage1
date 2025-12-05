@@ -11,29 +11,101 @@ const getBaseUrl = () => {
   return 'http://10.0.2.2:3000';
 };
 
-const API_BASE_URL = "https://agence-voyage1.onrender.com";
+const API_BASE_URL = getBaseUrl();
 console.log('🚀 [API] Cible :', API_BASE_URL);
 
 export default {
-  // --- AUTH ---
-  login: async (u, p) => {
-    const res = await fetch(`${API_BASE_URL}/auth/login`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({username: u, password: p}) });
-    if (!res.ok) throw new Error('Identifiants incorrects');
-    return await res.json();
+
+  // ============================================================
+  // 1. AUTHENTIFICATION & UTILISATEURS
+  // ============================================================
+  
+  login: async (username, password) => {
+    console.log('🔐 [API] login...');
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password }),
+      });
+
+      if (!response.ok) throw new Error('Identifiants incorrects');
+      return await response.json(); // { token, username, role }
+    } catch (error) {
+      console.error("❌ [API] login ERROR :", error.message);
+      throw error;
+    }
   },
+
+  // Initialisation du premier admin (Seed)
   seed: async () => {
-    const res = await fetch(`${API_BASE_URL}/auth/seed`);
-    const json = await res.json();
-    if(!res.ok) throw new Error(json.error);
-    return json.message;
+    console.log('🌱 [API] seed requested...');
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth/seed`);
+      const json = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(json.error || 'Erreur seed');
+      }
+      return json.message;
+    } catch (error) {
+      console.error("❌ [API] seed ERROR :", error.message);
+      throw error;
+    }
   },
-  getUsers: async () => (await fetch(`${API_BASE_URL}/auth/users`)).json(),
-  createUser: async (d, a) => {
-    const res = await fetch(`${API_BASE_URL}/auth/create`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({...d, adminUsername: a}) });
-    if(!res.ok) throw new Error((await res.json()).error);
-    return await res.json();
+
+  getUsers: async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth/users`);
+      return await response.json();
+    } catch (error) { return []; }
   },
-  deleteUser: async (id) => { await fetch(`${API_BASE_URL}/auth/users/${id}`, { method: 'DELETE' }); return true; },
+
+  createUser: async (userData, adminUsername) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth/create`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        // On envoie 'adminUsername' pour prouver qu'on est admin (Sécurité Backend)
+        body: JSON.stringify({ ...userData, adminUsername }), 
+      });
+
+      if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.error || 'Erreur création');
+      }
+      return await response.json();
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // --- NOUVELLE FONCTION AJOUTÉE ICI ---
+  updateUser: async (id, data, adminUsername) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth/users/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...data, adminUsername }), 
+      });
+
+      if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.error || 'Erreur mise à jour');
+      }
+      return await response.json();
+    } catch (error) {
+      throw error;
+    }
+  },
+  // -------------------------------------
+
+  deleteUser: async (id) => {
+    try {
+      await fetch(`${API_BASE_URL}/auth/users/${id}`, { method: 'DELETE' });
+      return true;
+    } catch (error) { return false; }
+  },
 
   // --- DEVIS (QUOTES) ---
   getQuotes: async () => {

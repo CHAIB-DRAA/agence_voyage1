@@ -101,3 +101,44 @@ exports.deleteUser = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
+
+// ... (Code existant : login, seedAdmin, createUser, getUsers, deleteUser) ...
+
+// 6. UPDATE USER : Modifier (ex: Reset Mot de passe)
+exports.updateUser = async (req, res) => {
+    const { password, role, adminUsername } = req.body;
+    const userIdToUpdate = req.params.id;
+  
+    console.log(`📝 [AUTH] Modification demandée par ${adminUsername} pour l'ID ${userIdToUpdate}`);
+  
+    try {
+      // A. VÉRIFICATION SÉCURITÉ
+      const requester = await User.findOne({ username: adminUsername });
+      if (!requester || requester.role !== 'admin') {
+        return res.status(403).json({ error: "Accès refusé. Admin requis." });
+      }
+  
+      // B. PRÉPARATION DES DONNÉES
+      const updateData = {};
+      
+      // On ne change le rôle que s'il est fourni
+      if (role) updateData.role = role;
+  
+      // On ne change le mot de passe QUE s'il est fourni (Reset)
+      if (password && password.trim() !== '') {
+        // Ici, idéalement on hache le mot de passe (bcrypt)
+        // Pour l'instant, on garde ta logique actuelle :
+        updateData.password = password; 
+      }
+  
+      const updatedUser = await User.findByIdAndUpdate(userIdToUpdate, updateData, { new: true });
+  
+      if (!updatedUser) return res.status(404).json({ error: "Utilisateur introuvable" });
+  
+      console.log(`✅ [AUTH] Utilisateur mis à jour : ${updatedUser.username}`);
+      res.json({ message: "Mise à jour réussie", user: updatedUser });
+  
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  };

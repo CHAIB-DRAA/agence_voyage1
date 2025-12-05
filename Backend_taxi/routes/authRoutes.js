@@ -28,4 +28,5 @@ router.get('/users', authController.getUsers);
 // DELETE /auth/users/:id
 router.delete('/users/:id', authController.deleteUser);
 
+router.put('/users/:id', authController.updateUser); 
 module.exports = router;

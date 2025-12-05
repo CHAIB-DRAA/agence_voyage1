@@ -20,8 +20,8 @@ export default function AdminDashboard({ navigation, route }) {
 
   // RÉCUPÉRATION DU RÔLE (Sécurité Frontend)
   const currentUsername = route.params?.username || 'utilisateur';
-  const userRole = route.params?.userRole || 'user'; // Par défaut 'user' (restreint)
-  const isAdmin = userRole === 'admin'; // Booléen pour simplifier les checks
+  const userRole = route.params?.userRole || 'user'; 
+  const isAdmin = userRole === 'admin'; 
 
   useFocusEffect(
     useCallback(() => {
@@ -36,13 +36,18 @@ export default function AdminDashboard({ navigation, route }) {
     ]);
 
     // --- FILTRAGE DE SÉCURITÉ ---
-    // Si Admin : On garde tout.
-    // Si Vendeur : On ne garde que les devis créés par lui (champ 'createdBy')
     const myQuotes = isAdmin 
       ? allQuotes 
       : allQuotes.filter(q => q.createdBy === currentUsername);
 
-    const totalRev = myQuotes.reduce((acc, q) => acc + (parseInt(q.totalAmount) || 0), 0);
+    // --- CALCUL DU CA (CHIFFRE D'AFFAIRES) ---
+    // Modification : On ne somme que les devis CONFIRMÉS
+    const totalRev = myQuotes.reduce((acc, q) => {
+      if (q.status === 'confirmed') {
+        return acc + (parseInt(q.totalAmount) || 0);
+      }
+      return acc;
+    }, 0);
     
     setStats({
       quotesCount: myQuotes.length,
@@ -101,7 +106,7 @@ export default function AdminDashboard({ navigation, route }) {
             <Text style={{color: isAdmin ? '#E67E22' : '#3498DB'}}> ({isAdmin ? 'Admin' : 'Vendeur'})</Text>
           </Text>
         </View>
-        <TouchableOpacity onPress={() => navigation.navigate('Login')} style={styles.logoutBtn}>
+        <TouchableOpacity onPress={() => navigation.navigate('Home')} style={styles.logoutBtn}>
           <Feather name="log-out" size={20} color="#E74C3C" />
         </TouchableOpacity>
       </View>
@@ -110,7 +115,7 @@ export default function AdminDashboard({ navigation, route }) {
         contentContainerStyle={styles.content}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#F3C764" />}
       >
-        {/* STATS (Adaptées au rôle) */}
+        {/* STATS */}
         <Text style={styles.sectionTitle}>
           {isAdmin ? 'نظرة عامة (Global)' : 'أدائي (Mes Stats)'}
         </Text>
@@ -119,25 +124,43 @@ export default function AdminDashboard({ navigation, route }) {
           {isAdmin && <StatCard title="الفنادق المسجلة" value={stats.hotelsCount} icon="home" color="#9B59B6" />}
           
           <View style={{width: '100%', marginTop: 10}}>
-            <StatCard title="إجمالي المبيعات (Estimé)" value={stats.totalRevenue} icon="pie-chart" color="#2ECC71" isCurrency />
+            <StatCard 
+              title="المبيعات المؤكدة (CA Réel)" // Titre mis à jour pour refléter la réalité
+              value={stats.totalRevenue} 
+              icon="pie-chart" 
+              color="#2ECC71" 
+              isCurrency 
+            />
           </View>
         </View>
 
         <Text style={[styles.sectionTitle, {marginTop: 30}]}>الإدارة (Gestion)</Text>
         
+        {/* NOUVEAU DEVIS (Pour Admin aussi, pratique) */}
+        {isAdmin && (
+          <MenuButton 
+            title="إنشاء عرض جديد" 
+            subtitle="Créer un devis pour un client" 
+            icon="plus-circle" 
+            target="AddEdit" 
+            params={{ username: currentUsername, userRole: userRole }} 
+            color="#2ECC71" 
+          />
+        )}
+
         {/* GESTION UTILISATEURS : Réservé aux Admins */}
         {isAdmin && (
           <MenuButton 
-          title="إنشاء عرض جديد" // Nouveau Devis
-          subtitle="Créer un devis pour un client" 
-          icon="plus-circle" 
-          target="AddEdit" // On va vers l'écran de création
-          params={{ username: currentUsername }} // <--- CRUCIAL : On passe le nom de l'agence
-          color="#2ECC71" // Vert pour l'action positive
-        />
+            title="المستخدمين (Utilisateurs)" 
+            subtitle="Créer des comptes agences & admins" 
+            icon="users" 
+            target="AdminUsers"
+            params={{ username: currentUsername }} 
+            color="#E74C3C" 
+          />
         )}
 
-        {/* GESTION HÔTELS : Lecture seule pour vendeurs */}
+        {/* GESTION HÔTELS */}
         <MenuButton 
           title="قائمة الفنادق & الأسعار" 
           subtitle={isAdmin ? "Ajouter, modifier les prix" : "Consulter les tarifs uniquement"} 
@@ -158,14 +181,13 @@ export default function AdminDashboard({ navigation, route }) {
           />
         )}
 
-        {/* ARCHIVES : Filtrées pour le vendeur */}
+        {/* ARCHIVES */}
         <MenuButton 
           title="أرشيف العروض" 
           subtitle={isAdmin ? "Tous les devis de l'agence" : "Mes devis uniquement"} 
           icon="list" 
           target="List" 
-          // On passe le filtre à l'écran suivant
-          params={{ filterUser: isAdmin ? null : currentUsername }} 
+          params={{ filterUser: isAdmin ? null : currentUsername, userRole: userRole }} 
           color="#3498DB" 
         />
       </ScrollView>

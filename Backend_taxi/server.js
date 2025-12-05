@@ -9,12 +9,21 @@ const quoteRoutes = require('./routes/quoteRoutes');
 const hotelRoutes = require('./routes/hotelRoutes');
 const authRoutes = require('./routes/authRoutes');
 const settingRoutes = require('./routes/settingRoutes');
+// Backend_taxi/server.js
+// Initialisation de l'application
+const app = express();
 
+
+// --- MODIFICATION CRUCIALE ICI ---
+// On autorise jusqu'à 50 Mo de données (pour les images)
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
+// ---------------------------------
+
+app.use(cors());
 // Chargement des variables d'environnement
 dotenv.config();
 
-// Initialisation de l'application
-const app = express();
 
 // Middleware
 app.use(cors());

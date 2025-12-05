@@ -3,6 +3,13 @@
     "name": "Omra Quote App",
     "slug": "agencevoyage",
     "version": "1.0.0",
+    "android": {
+      "package": "com.chaibdraa.omraquoteapp",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#FFFFFF"
+      }
+    },
     "sdkVersion": "48.0.0",
     "platforms": [
       "ios",
