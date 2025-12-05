@@ -9,83 +9,41 @@ const quoteRoutes = require('./routes/quoteRoutes');
 const hotelRoutes = require('./routes/hotelRoutes');
 const authRoutes = require('./routes/authRoutes');
 const settingRoutes = require('./routes/settingRoutes');
-// Backend_taxi/server.js
-// Initialisation de l'application
+
+dotenv.config();
 const app = express();
 
-
-// --- MODIFICATION CRUCIALE ICI ---
-// On autorise jusqu'à 50 Mo de données (pour les images)
+// --- CORRECTIF PAYLOAD TOO LARGE ---
+// On augmente la limite à 50mb pour les images
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
-// ---------------------------------
 
 app.use(cors());
-// Chargement des variables d'environnement
-dotenv.config();
 
-
-// Middleware
-app.use(cors());
-app.use(express.json());
-
-// Log de démarrage
 console.log('🔄 [SYSTEM] Initialisation du serveur...');
-
-// Connexion à la Base de Données
 connectDB();
 
-// --- VÉRIFICATIONS DE SÉCURITÉ (Pour éviter les crashs silencieux) ---
-
-// 1. Devis
-if (!quoteRoutes || (typeof quoteRoutes !== 'function' && typeof quoteRoutes.handle !== 'function')) {
-  console.error('\n❌ [ERREUR FATALE] Le fichier routes/quoteRoutes.js est invalide.');
+// Vérifications sécurité
+if (!quoteRoutes || !hotelRoutes || !authRoutes || !settingRoutes) {
+  console.error('❌ [ERREUR FATALE] Une route manque.');
   process.exit(1);
 }
 
-// 2. Hôtels
-if (!hotelRoutes || (typeof hotelRoutes !== 'function' && typeof hotelRoutes.handle !== 'function')) {
-  console.error('\n❌ [ERREUR FATALE] Le fichier routes/hotelRoutes.js est invalide.');
-  process.exit(1);
-}
-
-// 3. Auth (Ajouté pour la sécurité)
-if (!authRoutes || (typeof authRoutes !== 'function' && typeof authRoutes.handle !== 'function')) {
-  console.error('\n❌ [ERREUR FATALE] Le fichier routes/authRoutes.js est invalide.');
-  process.exit(1);
-}
-
-// 4. Settings (Ajouté pour la sécurité)
-if (!settingRoutes || (typeof settingRoutes !== 'function' && typeof settingRoutes.handle !== 'function')) {
-  console.error('\n❌ [ERREUR FATALE] Le fichier routes/settingRoutes.js est invalide.');
-  process.exit(1);
-}
-
-// --- DÉFINITION DES ROUTES ---
+// Routes
 app.use('/quotes', quoteRoutes);
 app.use('/hotels', hotelRoutes);
 app.use('/auth', authRoutes);
-// ⚠️ CORRECTION ICI : 'settings' au pluriel pour matcher l'API frontend
-app.use('/settings', settingRoutes); 
+app.use('/settings', settingRoutes);
 
-// Démarrage du serveur
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, '0.0.0.0', () => {
   const networkInterfaces = os.networkInterfaces();
   let myIp = 'localhost';
-  
-  Object.keys(networkInterfaces).forEach((interfaceName) => {
-    networkInterfaces[interfaceName].forEach((iface) => {
-      if (iface.family === 'IPv4' && !iface.internal) {
-        myIp = iface.address;
-      }
+  Object.keys(networkInterfaces).forEach((name) => {
+    networkInterfaces[name].forEach((iface) => {
+      if (iface.family === 'IPv4' && !iface.internal) myIp = iface.address;
     });
   });
-
-  console.log(`🚀 Serveur démarré sur le port ${PORT}`);
+  console.log(`🚀 Serveur prêt sur le port ${PORT}`);
   console.log(`📡 URL API : http://${myIp}:${PORT}`);
-  console.log(`   👉 Devis:     /quotes`);
-  console.log(`   👉 Hôtels:    /hotels`);
-  console.log(`   👉 Auth:      /auth`);
-  console.log(`   👉 Réglages:  /settings`);
 });

@@ -106,7 +106,7 @@ export default function AdminDashboard({ navigation, route }) {
             <Text style={{color: isAdmin ? '#E67E22' : '#3498DB'}}> ({isAdmin ? 'Admin' : 'Vendeur'})</Text>
           </Text>
         </View>
-        <TouchableOpacity onPress={() => navigation.navigate('Home')} style={styles.logoutBtn}>
+        <TouchableOpacity onPress={() => navigation.navigate('Login')} style={styles.logoutBtn}>
           <Feather name="log-out" size={20} color="#E74C3C" />
         </TouchableOpacity>
       </View>
