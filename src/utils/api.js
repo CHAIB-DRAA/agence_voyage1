@@ -10,7 +10,7 @@ const getBaseUrl = () => {
   return 'http://10.0.2.2:3000';
 };
 
-const API_BASE_URL = getBaseUrl();
+const API_BASE_URL = "https://agence-voyage1.onrender.com";
 console.log('🚀 [API] Cible :', API_BASE_URL);
 
 // --- VARIABLE POUR STOCKER LE TOKEN DE SESSION ---

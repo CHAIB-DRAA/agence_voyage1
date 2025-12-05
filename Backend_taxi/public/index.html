@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>طلب عرض عمرة | Demande de Devis</title>
+    <style>
+        :root { --primary: #F3C764; --dark: #050B14; --light: #f4f4f4; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: var(--light); margin: 0; padding: 20px; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; background: white; padding: 30px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        .header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid var(--primary); padding-bottom: 20px; }
+        h1 { color: var(--dark); margin: 0; font-size: 24px; }
+        .subtitle { color: #666; font-size: 14px; margin-top: 5px; }
+        
+        .form-group { margin-bottom: 20px; }
+        label { display: block; margin-bottom: 8px; font-weight: bold; color: var(--dark); }
+        input, select, textarea { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 16px; }
+        input:focus { border-color: var(--primary); outline: none; }
+        
+        .btn { background-color: var(--dark); color: var(--primary); width: 100%; padding: 15px; border: none; border-radius: 8px; font-size: 18px; font-weight: bold; cursor: pointer; transition: 0.3s; }
+        .btn:hover { background-color: #000; }
+        
+        .success-message { display: none; text-align: center; color: green; padding: 20px; background: #e8f5e9; border-radius: 8px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header">
+        <h1>طلب عرض سعر للعمرة</h1>
+        <div class="subtitle">Demande de devis Omra</div>
+    </div>
+
+    <form id="quoteForm">
+        <div class="form-group">
+            <label>الاسم الكامل (Nom complet)</label>
+            <input type="text" id="clientName" required placeholder="محمد بن عبد الله">
+        </div>
+
+        <div class="form-group">
+            <label>رقم الهاتف (Téléphone)</label>
+            <input type="tel" id="clientPhone" required placeholder="05 XX XX XX XX">
+        </div>
+
+        <div class="form-group">
+            <label>الوجهة المطلوبة (Destination)</label>
+            <select id="destination">
+                <option value="مكة">مكة المكرمة</option>
+                <option value="المدينة">المدينة المنورة</option>
+                <option value="جدة">جدة</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label>عدد الأشخاص (Nombre de personnes)</label>
+            <input type="number" id="numberOfPeople" value="1" min="1">
+        </div>
+
+        <div class="form-group">
+            <label>ملاحظات إضافية (Notes)</label>
+            <textarea id="notes" rows="3" placeholder="تفضيلات خاصة للفندق، الطيران..."></textarea>
+        </div>
+
+        <button type="submit" class="btn">إرسال الطلب (Envoyer)</button>
+    </form>
+
+    <div id="success" class="success-message">
+        <h3>✅ تم الإرسال بنجاح!</h3>
+        <p>سنتصل بك قريباً لتقديم العرض المناسب.</p>
+    </div>
+</div>
+
+<script>
+    document.getElementById('quoteForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const btn = document.querySelector('.btn');
+        btn.disabled = true;
+        btn.textContent = 'جاري الإرسال...';
+
+        const data = {
+            clientName: document.getElementById('clientName').value,
+            clientPhone: document.getElementById('clientPhone').value,
+            destination: document.getElementById('destination').value,
+            numberOfPeople: document.getElementById('numberOfPeople').value,
+            notes: document.getElementById('notes').value,
+            status: 'pending', // Statut par défaut
+            createdBy: 'Client (Web)', // Marqueur pour savoir que ça vient du web
+            // Valeurs par défaut pour éviter les bugs
+            prices: { single: '0', double: '0', triple: '0', quad: '0' },
+            quantities: { single: '0', double: '0', triple: '0', quad: '0' }
+        };
+
+        try {
+            // On envoie à la route publique
+            const response = await fetch('/quotes/public', { 
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+
+            if (response.ok) {
+                document.getElementById('quoteForm').style.display = 'none';
+                document.getElementById('success').style.display = 'block';
+            } else {
+                alert('Erreur serveur. Veuillez réessayer.');
+                btn.disabled = false;
+            }
+        } catch (error) {
+            alert('Erreur de connexion.');
+            btn.disabled = false;
+        }
+    });
+</script>
+
+</body>
+</html>

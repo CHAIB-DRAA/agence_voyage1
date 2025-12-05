@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
 const os = require('os'); 
+const path = require('path'); // <--- IMPORT NÉCESSAIRE POUR LE WEB
 
 // Import des modules locaux
 const connectDB = require('./config/db');
@@ -13,8 +14,12 @@ const settingRoutes = require('./routes/settingRoutes');
 dotenv.config();
 const app = express();
 
-// --- CORRECTIF PAYLOAD TOO LARGE ---
-// On augmente la limite à 50mb pour les images
+// --- 1. CONFIGURATION FICHIERS STATIQUES (WEB) ---
+// Permet d'accéder au formulaire client via http://ip:3000/index.html
+app.use(express.static(path.join(__dirname, 'public')));
+
+// --- 2. CORRECTIF PAYLOAD TOO LARGE (MOBILE) ---
+// On augmente la limite à 50mb pour accepter les photos de passeport
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
@@ -29,7 +34,7 @@ if (!quoteRoutes || !hotelRoutes || !authRoutes || !settingRoutes) {
   process.exit(1);
 }
 
-// Routes
+// Routes API
 app.use('/quotes', quoteRoutes);
 app.use('/hotels', hotelRoutes);
 app.use('/auth', authRoutes);
@@ -39,11 +44,14 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, '0.0.0.0', () => {
   const networkInterfaces = os.networkInterfaces();
   let myIp = 'localhost';
+  
   Object.keys(networkInterfaces).forEach((name) => {
     networkInterfaces[name].forEach((iface) => {
       if (iface.family === 'IPv4' && !iface.internal) myIp = iface.address;
     });
   });
+
   console.log(`🚀 Serveur prêt sur le port ${PORT}`);
-  console.log(`📡 URL API : http://${myIp}:${PORT}`);
+  console.log(`📡 URL API (Mobile) : http://${myIp}:${PORT}`);
+  console.log(`📄 Formulaire Client  : http://${myIp}:${PORT}/index.html`); // <--- LIEN À PARTAGER
 });
