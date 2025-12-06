@@ -30,7 +30,12 @@ export default function QuotesList({ navigation, route }) {
       const data = await api.getQuotes();
       let safeData = Array.isArray(data) ? data : [];
       
-      if (!isAdmin && filterUser) {
+      // Filtrage intelligent : 
+      // Si filterUser est 'Client (Web)', on montre tout ce qui vient du web (clic depuis dashboard)
+      // Sinon, logique standard (Admin voit tout, Vendeur voit ses devis)
+      if (filterUser === 'Client (Web)') {
+         safeData = safeData.filter(q => q.createdBy === 'Client (Web)');
+      } else if (!isAdmin && filterUser) {
         safeData = safeData.filter(q => q.createdBy === filterUser || !q.createdBy);
       }
       
@@ -55,14 +60,18 @@ export default function QuotesList({ navigation, route }) {
   };
 
   const handleDelete = (id) => {
-    Alert.alert("Supprimer ?", "Action irréversible.", [
-      { text: "Annuler", style: "cancel" },
-      { text: "Supprimer", style: "destructive", onPress: async () => {
-          try { await api.deleteQuote(id); loadQuotes(); } 
-          catch (e) { Alert.alert("Erreur", "Impossible de supprimer."); }
-        } 
-      }
-    ]);
+    Alert.alert(
+      "Supprimer le devis ?",
+      "Cette action est définitive.",
+      [
+        { text: "Annuler", style: "cancel" },
+        { text: "Supprimer", style: "destructive", onPress: async () => {
+            try { await api.deleteQuote(id); loadQuotes(); } 
+            catch (e) { Alert.alert("Erreur", "Impossible de supprimer."); }
+          } 
+        }
+      ]
+    );
   };
 
   const handleEdit = (item) => {
@@ -89,7 +98,6 @@ export default function QuotesList({ navigation, route }) {
     }
   };
 
-  // --- STYLES DYNAMIQUES SELON STATUT ---
   const getStatusConfig = (status) => {
     switch (status) {
       case 'confirmed': return { color: '#2ECC71', label: 'مؤكد', bg: 'rgba(46, 204, 113, 0.1)', icon: 'check-circle' };
@@ -100,6 +108,7 @@ export default function QuotesList({ navigation, route }) {
 
   const renderItem = ({ item }) => {
     const status = getStatusConfig(item.status);
+    const isWeb = item.createdBy === 'Client (Web)';
     
     return (
       <View style={[styles.cardContainer, { borderColor: status.color }]}>
@@ -109,7 +118,6 @@ export default function QuotesList({ navigation, route }) {
           onPress={() => handleDetails(item)}
           activeOpacity={0.7}
         >
-          {/* En-tête : Date & Badge Statut */}
           <View style={styles.cardHeader}>
             <View style={[styles.statusBadge, { backgroundColor: status.bg }]}>
               <Text style={[styles.statusText, { color: status.color }]}>{status.label}</Text>
@@ -118,7 +126,6 @@ export default function QuotesList({ navigation, route }) {
             <Text style={styles.date}>{new Date(item.createdAt).toLocaleDateString('fr-FR')}</Text>
           </View>
 
-          {/* Infos Principales */}
           <View style={styles.mainInfo}>
             <Text style={styles.clientName} numberOfLines={1}>
               {item.clientName || 'Client Inconnu'}
@@ -126,17 +133,22 @@ export default function QuotesList({ navigation, route }) {
             <Text style={styles.destination}>{item.destination || '---'}</Text>
           </View>
 
-          {/* Détails techniques (Créateur & Nuits) */}
           <View style={styles.metaRow}>
-            {isAdmin && item.createdBy ? (
-              <Text style={styles.creatorText}>Par: {item.createdBy}</Text>
-            ) : <View />}
+            
+            {/* --- BADGE CRÉATEUR SPÉCIAL --- */}
+            {isWeb ? (
+               <View style={[styles.creatorTag, {backgroundColor: '#3498DB'}]}>
+                  <Text style={[styles.creatorText, {color: '#FFF'}]}>🌐 طلب أونلاين</Text>
+               </View>
+            ) : (
+               isAdmin && item.createdBy ? <Text style={styles.creatorText}>Par: {item.createdBy}</Text> : <View />
+            )}
+
             <Text style={styles.nightsText}>
               {item.nightsMakkah || 0} ليالي مكة • {item.nightsMedina || 0} ليالي المدينة
             </Text>
           </View>
 
-          {/* Prix */}
           <View style={styles.priceRow}>
             <Text style={styles.totalLabel}>الإجمالي</Text>
             <Text style={styles.totalPrice}>{item.totalAmount ? parseInt(item.totalAmount).toLocaleString() : '0'} DA</Text>
@@ -144,7 +156,6 @@ export default function QuotesList({ navigation, route }) {
 
         </TouchableOpacity>
 
-        {/* Barre d'Actions */}
         <View style={styles.actionBar}>
           <TouchableOpacity onPress={() => handleDelete(item.id || item._id)} style={styles.actionBtn}>
             <Feather name="trash-2" size={18} color="#E74C3C" />
@@ -173,7 +184,7 @@ export default function QuotesList({ navigation, route }) {
             <Feather name="arrow-right" size={24} color="#F3C764" />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>
-            {filterUser ? 'عروضي (Mes Devis)' : 'أرشيف العروض'}
+            {filterUser === 'Client (Web)' ? 'طلبات الموقع' : (filterUser ? 'عروضي' : 'أرشيف العروض')}
           </Text>
         </View>
 
@@ -244,6 +255,10 @@ const styles = StyleSheet.create({
 
   metaRow: { flexDirection: 'row-reverse', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
   creatorText: { color: '#556', fontSize: 11, fontStyle: 'italic' },
+  
+  // Styles badge spécifique pour web
+  creatorTag: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
+  
   nightsText: { color: '#8A95A5', fontSize: 12 },
 
   priceRow: { flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'flex-start', marginTop: 5 },

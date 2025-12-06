@@ -79,8 +79,7 @@ export default function AddEditQuote({ navigation, route }) {
   }, [
     quote.hotelMakkah, quote.hotelMedina, quote.hotelJeddah,
     quote.nightsMakkah, quote.nightsMedina, quote.nightsJeddah,
-    quote.quantities, quote.flightPrice, quote.transportPrice, 
-    quote.visaPrice, 
+    quote.quantities, quote.flightPrice, quote.transportPrice, quote.visaPrice, 
     quote.numberOfPeople, quote.advanceAmount,
     quote.meals, hotels, tripOptions
   ]);
@@ -192,16 +191,14 @@ export default function AddEditQuote({ navigation, route }) {
       Alert.alert('Erreur', 'Permission requise');
       return;
     }
-
     try {
       let result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaType.Images, // Syntaxe corrigée
+        mediaTypes: ImagePicker.MediaType.Images,
         allowsEditing: true,
         aspect: [4, 3],
-        quality: 0.3, // Compression forte pour éviter l'erreur PayloadTooLarge
+        quality: 0.2, // Compression forte pour éviter l'erreur PayloadTooLarge
         base64: true,
       });
-
       if (!result.canceled) {
         const base64Img = `data:image/jpeg;base64,${result.assets[0].base64}`;
         setQuote(prev => ({ ...prev, passportImage: base64Img }));
@@ -218,67 +215,7 @@ export default function AddEditQuote({ navigation, route }) {
     }
     try {
         const html = `
-            <!DOCTYPE html>
-            <html lang="ar" dir="rtl">
-            <head>
-                <meta charset="UTF-8">
-                <style>
-                    body { font-family: 'Helvetica', sans-serif; padding: 30px; color: #333; direction: rtl; text-align: right; border: 2px solid #F3C764; margin: 10px; }
-                    .header { text-align: center; margin-bottom: 20px; border-bottom: 1px solid #eee; padding-bottom: 10px; }
-                    .title { font-size: 24px; font-weight: bold; color: #050B14; margin: 0; }
-                    .subtitle { font-size: 14px; color: #666; margin-top: 5px; text-transform: uppercase; letter-spacing: 1px; }
-                    .info-row { margin-bottom: 15px; font-size: 16px; border-bottom: 1px dashed #eee; padding-bottom: 5px; }
-                    .amount-box { background: #F3C764; color: #050B14; padding: 20px; text-align: center; font-size: 28px; font-weight: 900; margin: 20px 0; border-radius: 8px; border: 2px solid #050B14; }
-                    .financial-summary { background-color: #f9f9f9; padding: 15px; border-radius: 8px; margin-top: 20px; border: 1px solid #eee; }
-                    .summary-row { display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 16px; }
-                    .total-row { font-size: 18px; font-weight: bold; border-top: 2px solid #ddd; padding-top: 10px; margin-top: 5px; }
-                    .footer { margin-top: 40px; text-align: center; font-size: 12px; color: #888; border-top: 1px solid #ccc; padding-top: 10px; }
-                    .signature-box { margin-top: 40px; display: flex; justify-content: space-between; }
-                    .sig-block { width: 40%; text-align: center; border-top: 1px solid #333; padding-top: 10px; font-weight: bold; }
-                </style>
-            </head>
-            <body>
-                <div class="header">
-                    <h1 class="title">إيصال استلام</h1>
-                    <p class="subtitle">BON DE VERSEMENT ESPÈCES</p>
-                    <p style="font-size: 12px; color: #555;">${new Date().toLocaleDateString('fr-FR')} - ${new Date().toLocaleTimeString('fr-FR')}</p>
-                </div>
-
-                <div class="info-row">
-                    <strong>استلمنا من (Reçu de):</strong> <br/>
-                    <span style="font-size: 18px;">${quote.clientName}</span>
-                </div>
-
-                <div class="amount-box">
-                    <div>مبلغ مدفوع (Versé)</div>
-                    <div>${parseInt(quote.advanceAmount).toLocaleString()} DA</div>
-                </div>
-
-                <div class="financial-summary">
-                    <div class="summary-row">
-                        <span>المبلغ الإجمالي (Total):</span>
-                        <strong>${parseInt(quote.totalAmount).toLocaleString()} DA</strong>
-                    </div>
-                    <div class="summary-row" style="color: #2ECC71;">
-                        <span>المدفوع (Avance):</span>
-                        <strong>- ${parseInt(quote.advanceAmount).toLocaleString()} DA</strong>
-                    </div>
-                    <div class="summary-row total-row" style="color: #E74C3C;">
-                        <span>المتبقي (Reste):</span>
-                        <strong>${parseInt(quote.remainingAmount).toLocaleString()} DA</strong>
-                    </div>
-                </div>
-
-                <div class="signature-box">
-                    <div class="sig-block">توقيع العميل<br/>(Signature Client)</div>
-                    <div class="sig-block">ختم وتوقيع الوكالة<br/>(Cachet Agence)</div>
-                </div>
-
-                <div class="footer">
-                    <p>هذا الإيصال وثيقة رسمية لإثبات الدفع.<br/>Ce reçu est une preuve de paiement officielle.</p>
-                </div>
-            </body>
-            </html>
+            <!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8"><style>body{font-family:'Helvetica',sans-serif;padding:30px;color:#333;direction:rtl;text-align:right;border:2px solid #F3C764;margin:10px}.header{text-align:center;margin-bottom:20px;border-bottom:1px solid #eee;padding-bottom:10px}.title{font-size:24px;font-weight:bold;color:#050B14;margin:0}.amount-box{background:#F3C764;color:#050B14;padding:20px;text-align:center;font-size:28px;font-weight:900;margin:30px 0;border-radius:8px;border:2px solid #050B14}.info-row{margin-bottom:15px;font-size:16px}</style></head><body><div class="header"><h1 class="title">إيصال استلام</h1><p>BON DE VERSEMENT</p></div><div class="info-row"><strong>استلمنا من:</strong> ${quote.clientName}</div><div class="amount-box">${parseInt(quote.advanceAmount).toLocaleString()} DA</div></body></html>
         `;
         const { uri } = await Print.printToFileAsync({ html });
         await Sharing.shareAsync(uri, { UTI: '.pdf', mimeType: 'application/pdf' });
@@ -303,7 +240,6 @@ export default function AddEditQuote({ navigation, route }) {
     }
   };
 
-  // Helpers UI
   const toggleMeal = (label) => setQuote(prev => { const m = prev.meals || []; return m.includes(label) ? { ...prev, meals: m.filter(x => x !== label) } : { ...prev, meals: [...m, label] }; });
   const setStatus = (s) => setQuote(prev => ({ ...prev, status: s }));
   const updateQuantity = (key, value) => setQuote(prev => ({ ...prev, quantities: { ...prev.quantities, [key]: value } }));
@@ -323,7 +259,44 @@ export default function AddEditQuote({ navigation, route }) {
   const getModalTitle = () => targetFieldForGeneric === 'destination' ? 'الوجهة' : targetFieldForGeneric === 'period' ? 'الفترة' : 'الطيران';
   const filteredHotels = hotels.filter(h => h.city === targetCityForHotel);
   const parseDateString = (d) => d ? new Date(d.split('/')[2], d.split('/')[1] - 1, d.split('/')[0]) : new Date();
-  const onDateChange = (event, selectedDate) => { if (Platform.OS === 'android') setActiveDatePicker(null); if (selectedDate) { const d = selectedDate.getDate().toString().padStart(2,'0'), m = (selectedDate.getMonth()+1).toString().padStart(2,'0'), y = selectedDate.getFullYear(); setQuote(prev => ({ ...prev, dates: { ...prev.dates, [activeDatePicker]: `${d}/${m}/${y}` } })); } };
+  
+  const onDateChange = (event, selectedDate) => { 
+    const currentKey = activeDatePicker;
+    if (Platform.OS === 'android') setActiveDatePicker(null); 
+    
+    if (selectedDate && event.type === 'set') { 
+        const d = selectedDate.getDate().toString().padStart(2,'0');
+        const m = (selectedDate.getMonth()+1).toString().padStart(2,'0');
+        const y = selectedDate.getFullYear();
+        const newDateStr = `${d}/${m}/${y}`;
+        
+        setQuote(prev => {
+            const nextDates = { ...prev.dates, [currentKey]: newDateStr };
+            const updates = { dates: nextDates };
+
+            const calculateNights = (d1, d2) => {
+                if(!d1 || !d2) return '0';
+                const [day1, m1, y1] = d1.split('/').map(Number);
+                const [day2, m2, y2] = d2.split('/').map(Number);
+                const date1 = new Date(y1, m1-1, day1);
+                const date2 = new Date(y2, m2-1, day2);
+                if(isNaN(date1) || isNaN(date2)) return '0';
+                const diff = Math.ceil((date2 - date1) / (1000 * 60 * 60 * 24));
+                return diff > 0 ? String(diff) : '0';
+            };
+
+            if (currentKey.includes('makkah')) {
+                updates.nightsMakkah = calculateNights(nextDates.makkahCheckIn, nextDates.makkahCheckOut);
+            } else if (currentKey.includes('medina')) {
+                updates.nightsMedina = calculateNights(nextDates.medinaCheckIn, nextDates.medinaCheckOut);
+            } else if (currentKey.includes('jeddah')) {
+                updates.nightsJeddah = calculateNights(nextDates.jeddahCheckIn, nextDates.jeddahCheckOut);
+            }
+            
+            return { ...prev, ...updates };
+        });
+    } 
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -378,22 +351,34 @@ export default function AddEditQuote({ navigation, route }) {
           <View style={styles.card}>
             <SectionHeader title="الرحلة و الطيران (Vol & Transport)" icon="map" />
             <View style={styles.rowReverse}>
-              <View style={{flex:1, marginLeft:5}}><SelectField label="الوجهة" value={quote.destination} onPress={() => openGenericPicker('destination')} placeholder="Destination" /></View>
-              <View style={{flex:1, marginRight:5}}><SelectField label="الموسم" value={quote.period} onPress={() => openGenericPicker('period')} placeholder="Période" /></View>
+              <View style={{flex:1, marginLeft:5}}>
+                <SelectField label="الوجهة" value={quote.destination} onPress={() => openGenericPicker('destination')} placeholder="Destination" />
+              </View>
+              <View style={{flex:1, marginRight:5}}>
+                <SelectField label="الموسم" value={quote.period} onPress={() => openGenericPicker('period')} placeholder="Période" />
+              </View>
             </View>
             <View style={styles.rowReverse}>
-              <View style={{flex:1, marginLeft:5}}><SelectField label="شركة الطيران" value={quote.transport} onPress={() => openGenericPicker('transport')} placeholder="Compagnie" /></View>
-              <View style={{flex:1, marginRight:5}}><InputField label="سعر التذكرة (DA)" value={quote.flightPrice} onChangeText={t => setQuote({...quote, flightPrice: t})} keyboardType="numeric" placeholder="0" /></View>
+              <View style={{flex:1, marginLeft:5}}>
+                <SelectField label="شركة الطيران" value={quote.transport} onPress={() => openGenericPicker('transport')} placeholder="Compagnie" />
+              </View>
+              <View style={{flex:1, marginRight:5}}>
+                <InputField label="سعر التذكرة (DA)" value={quote.flightPrice} onChangeText={t => setQuote({...quote, flightPrice: t})} keyboardType="numeric" placeholder="0" />
+              </View>
             </View>
             <View style={styles.divider} />
             <View style={styles.rowReverse}>
               <View style={{flex:1, marginLeft:5}}>
                 <Text style={styles.label}>نقل داخلي</Text>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{flexDirection:'row-reverse'}}>
-                   {tripOptions.intercity.length > 0 ? tripOptions.intercity.map(t => (<MealChip key={t._id} label={t.label} active={quote.transportMakkahMedina === t.label} onPress={() => setTransportInterCity(t.label)} />)) : <Text style={{color:'#666'}}>...</Text>}
+                   {tripOptions.intercity.length > 0 ? tripOptions.intercity.map(t => (
+                     <SmallChip key={t._id} label={t.label} active={quote.transportMakkahMedina === t.label} onPress={() => setTransportInterCity(t.label)} />
+                   )) : <Text style={{color:'#666'}}>...</Text>}
                 </ScrollView>
               </View>
-              <View style={{flex:0.6}}><InputField label="سعر النقل (DA)" value={quote.transportPrice} onChangeText={t => setQuote({...quote, transportPrice: t})} keyboardType="numeric" placeholder="0" /></View>
+              <View style={{flex:0.6}}>
+                <InputField label="سعر النقل (DA)" value={quote.transportPrice} onChangeText={t => setQuote({...quote, transportPrice: t})} keyboardType="numeric" placeholder="0" />
+              </View>
             </View>
             <InputField label="سعر التأشيرة (Visa) - للفرد" value={quote.visaPrice} onChangeText={t => setQuote({...quote, visaPrice: t})} keyboardType="numeric" placeholder="0" />
           </View>
@@ -404,27 +389,45 @@ export default function AddEditQuote({ navigation, route }) {
               <Text style={styles.cityTitle}>المدينة المنورة</Text>
               <SelectField label="" value={quote.hotelMedina} onPress={() => openHotelPicker('Medina')} placeholder="choisir hôtel..." />
               <View style={styles.rowReverse}>
-                 <View style={{flex:1}}><InputField label="الليالي" value={quote.nightsMedina} onChangeText={t => setQuote({...quote, nightsMedina: t})} keyboardType="numeric" /></View>
-                 <View style={{flex:2, marginHorizontal:5}}><DateButton label="Check-In" value={quote.dates.medinaCheckIn} onPress={() => setActiveDatePicker('medinaCheckIn')} /></View>
-                 <View style={{flex:2}}><DateButton label="Check-Out" value={quote.dates.medinaCheckOut} onPress={() => setActiveDatePicker('medinaCheckOut')} /></View>
+                 <View style={{flex:1}}>
+                    <InputField label="الليالي" value={quote.nightsMedina} onChangeText={t => setQuote({...quote, nightsMedina: t})} keyboardType="numeric" />
+                 </View>
+                 <View style={{flex:2, marginHorizontal:5}}>
+                    <DateButton label="Check-In" value={quote.dates.medinaCheckIn} onPress={() => setActiveDatePicker('medinaCheckIn')} />
+                 </View>
+                 <View style={{flex:2}}>
+                    <DateButton label="Check-Out" value={quote.dates.medinaCheckOut} onPress={() => setActiveDatePicker('medinaCheckOut')} />
+                 </View>
               </View>
             </View>
             <View style={styles.hotelBlock}>
               <Text style={styles.cityTitle}>مكة المكرمة</Text>
               <SelectField label="" value={quote.hotelMakkah} onPress={() => openHotelPicker('Makkah')} placeholder="choisir hôtel..." />
               <View style={styles.rowReverse}>
-                 <View style={{flex:1}}><InputField label="الليالي" value={quote.nightsMakkah} onChangeText={t => setQuote({...quote, nightsMakkah: t})} keyboardType="numeric" /></View>
-                 <View style={{flex:2, marginHorizontal:5}}><DateButton label="Check-In" value={quote.dates.makkahCheckIn} onPress={() => setActiveDatePicker('makkahCheckIn')} /></View>
-                 <View style={{flex:2}}><DateButton label="Check-Out" value={quote.dates.makkahCheckOut} onPress={() => setActiveDatePicker('makkahCheckOut')} /></View>
+                 <View style={{flex:1}}>
+                    <InputField label="الليالي" value={quote.nightsMakkah} onChangeText={t => setQuote({...quote, nightsMakkah: t})} keyboardType="numeric" />
+                 </View>
+                 <View style={{flex:2, marginHorizontal:5}}>
+                    <DateButton label="Check-In" value={quote.dates.makkahCheckIn} onPress={() => setActiveDatePicker('makkahCheckIn')} />
+                 </View>
+                 <View style={{flex:2}}>
+                    <DateButton label="Check-Out" value={quote.dates.makkahCheckOut} onPress={() => setActiveDatePicker('makkahCheckOut')} />
+                 </View>
               </View>
             </View>
              <View style={styles.hotelBlock}>
               <Text style={styles.cityTitle}>جدة (Jeddah)</Text>
               <SelectField label="" value={quote.hotelJeddah} onPress={() => openHotelPicker('Jeddah')} placeholder="choisir hôtel..." />
               <View style={styles.rowReverse}>
-                 <View style={{flex:1}}><InputField label="الليالي" value={quote.nightsJeddah} onChangeText={t => setQuote({...quote, nightsJeddah: t})} keyboardType="numeric" /></View>
-                 <View style={{flex:2, marginHorizontal:5}}><DateButton label="Check-In" value={quote.dates.jeddahCheckIn} onPress={() => setActiveDatePicker('jeddahCheckIn')} /></View>
-                 <View style={{flex:2}}><DateButton label="Check-Out" value={quote.dates.jeddahCheckOut} onPress={() => setActiveDatePicker('jeddahCheckOut')} /></View>
+                 <View style={{flex:1}}>
+                    <InputField label="الليالي" value={quote.nightsJeddah} onChangeText={t => setQuote({...quote, nightsJeddah: t})} keyboardType="numeric" />
+                 </View>
+                 <View style={{flex:2, marginHorizontal:5}}>
+                    <DateButton label="Check-In" value={quote.dates.jeddahCheckIn} onPress={() => setActiveDatePicker('jeddahCheckIn')} />
+                 </View>
+                 <View style={{flex:2}}>
+                    <DateButton label="Check-Out" value={quote.dates.jeddahCheckOut} onPress={() => setActiveDatePicker('jeddahCheckOut')} />
+                 </View>
               </View>
             </View>
           </View>
@@ -439,11 +442,12 @@ export default function AddEditQuote({ navigation, route }) {
             <View style={styles.divider} />
             <Text style={styles.label}>Repas (الإعاشة)</Text>
             <View style={styles.mealsContainer}>
-              {tripOptions.meals.length > 0 ? tripOptions.meals.map(m => <MealChip key={m._id} label={`${m.label} (${m.price}DA)`} active={quote.meals.includes(m.label)} onPress={() => toggleMeal(m.label)} />) : <Text style={{color:'#666'}}>Ajouter options dans Admin</Text>}
+              {tripOptions.meals.length > 0 ? tripOptions.meals.map(m => (
+                <MealChip key={m._id} label={`${m.label} (${m.price}DA)`} active={quote.meals.includes(m.label)} onPress={() => toggleMeal(m.label)} />
+              )) : <Text style={{color:'#666'}}>Ajouter options dans Admin</Text>}
             </View>
           </View>
 
-          {/* --- SECTION PAIEMENT --- */}
           <View style={[styles.card, {borderColor: '#F3C764', borderWidth:1}]}>
             <SectionHeader title="المدفوعات (Paiement)" icon="dollar-sign" />
             <View style={styles.rowReverse}>
@@ -459,8 +463,6 @@ export default function AddEditQuote({ navigation, route }) {
                  </View>
               </View>
             </View>
-            
-            {/* BOUTON GÉNÉRER REÇU */}
             <TouchableOpacity style={styles.receiptBtn} onPress={generateReceipt}>
                <Feather name="printer" size={16} color="#050B14" />
                <Text style={styles.receiptBtnText}>طباعة وصل استلام (Reçu)</Text>
@@ -494,8 +496,14 @@ export default function AddEditQuote({ navigation, route }) {
   );
 }
 
-// --- UI COMPONENTS ---
-// Wrapper tous les textes dans <Text> pour éviter l'erreur
+// --- UI COMPONENTS CORRIGÉS (MULTI-LIGNES) ---
+const SectionHeader = ({ title, icon }) => (
+  <View style={styles.sectionHeader}>
+    <Text style={styles.sectionTitle}>{title}</Text>
+    <Feather name={icon} size={18} color="#F3C764" style={{ marginLeft: 8 }} />
+  </View>
+);
+
 const RoomInput = ({ label, qty, price, onChange }) => (
   <View style={{ marginBottom: 10 }}>
     <View style={{ flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -512,13 +520,6 @@ const RoomInput = ({ label, qty, price, onChange }) => (
         {price && price !== '0' ? `${price} DA` : '-'}
       </Text>
     </View>
-  </View>
-);
-
-const SectionHeader = ({ title, icon }) => (
-  <View style={styles.sectionHeader}>
-    <Text style={styles.sectionTitle}>{title}</Text>
-    <Feather name={icon} size={18} color="#F3C764" style={{ marginLeft: 8 }} />
   </View>
 );
 
@@ -595,7 +596,8 @@ const styles = StyleSheet.create({
   rowReverse: { flexDirection: 'row-reverse' },
   passportBox: { width: 80, height: 80, borderRadius: 10, borderStyle: 'dashed', borderWidth: 1, borderColor: '#F3C764', alignItems: 'center', justifyContent: 'center', marginLeft: 10 },
   passportImg: { width: '100%', height: '100%', borderRadius: 10 },
-  passportTxt: { color: '#F3C764', fontSize: 10, textAlign: 'center', marginTop: 4 },
+  passportPlaceholder: { alignItems: 'center' },
+  passportText: { color: '#F3C764', fontSize: 10, textAlign: 'center', marginTop: 4 },
   mealsContainer: { flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 8 },
   chip: { paddingVertical: 8, paddingHorizontal: 12, borderRadius: 20, borderWidth: 1, borderColor: '#444' },
   chipActive: { backgroundColor: '#F3C764', borderColor: '#F3C764' },

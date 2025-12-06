@@ -14,11 +14,12 @@ export default function AdminDashboard({ navigation, route }) {
     quotesCount: 0,
     totalRevenue: 0,
     hotelsCount: 0,
-    recentQuotes: []
+    recentQuotes: [],
+    webRequestsCount: 0 // <--- NOUVEAU KPI
   });
   const [refreshing, setRefreshing] = useState(false);
 
-  // RÉCUPÉRATION DU RÔLE (Sécurité Frontend)
+  // RÉCUPÉRATION DU RÔLE
   const currentUsername = route.params?.username || 'utilisateur';
   const userRole = route.params?.userRole || 'user'; 
   const isAdmin = userRole === 'admin'; 
@@ -40,8 +41,11 @@ export default function AdminDashboard({ navigation, route }) {
       ? allQuotes 
       : allQuotes.filter(q => q.createdBy === currentUsername);
 
-    // --- CALCUL DU CA (CHIFFRE D'AFFAIRES) ---
-    // Modification : On ne somme que les devis CONFIRMÉS
+    // --- DÉTECTION DES DEMANDES WEB ---
+    // On compte les devis créés par "Client (Web)" qui sont encore "pending"
+    // Ce calcul se fait sur 'allQuotes' car seul l'admin doit voir ça
+    const webRequests = allQuotes.filter(q => q.createdBy === 'Client (Web)' && q.status === 'pending');
+
     const totalRev = myQuotes.reduce((acc, q) => {
       if (q.status === 'confirmed') {
         return acc + (parseInt(q.totalAmount) || 0);
@@ -53,7 +57,8 @@ export default function AdminDashboard({ navigation, route }) {
       quotesCount: myQuotes.length,
       totalRevenue: totalRev,
       hotelsCount: hotels.length,
-      recentQuotes: myQuotes.slice(0, 5)
+      recentQuotes: myQuotes.slice(0, 5),
+      webRequestsCount: webRequests.length // <--- Stockage
     });
     setRefreshing(false);
   };
@@ -115,6 +120,24 @@ export default function AdminDashboard({ navigation, route }) {
         contentContainerStyle={styles.content}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#F3C764" />}
       >
+        
+        {/* --- ALERT BOX POUR LES DEMANDES WEB (ADMIN SEULEMENT) --- */}
+        {stats.webRequestsCount > 0 && isAdmin && (
+          <TouchableOpacity 
+            style={styles.alertBox} 
+            onPress={() => navigation.navigate('List', { filterUser: 'Client (Web)', userRole: 'admin' })}
+          >
+            <View style={styles.alertIcon}>
+              <Feather name="globe" size={24} color="#FFF" />
+            </View>
+            <View style={{flex: 1, paddingRight: 15}}>
+              <Text style={styles.alertTitle}>طلبات من الموقع (Web)</Text>
+              <Text style={styles.alertDesc}>لديك {stats.webRequestsCount} طلبات جديدة من العملاء</Text>
+            </View>
+            <Feather name="chevron-left" size={24} color="#FFF" />
+          </TouchableOpacity>
+        )}
+
         {/* STATS */}
         <Text style={styles.sectionTitle}>
           {isAdmin ? 'نظرة عامة (Global)' : 'أدائي (Mes Stats)'}
@@ -125,7 +148,7 @@ export default function AdminDashboard({ navigation, route }) {
           
           <View style={{width: '100%', marginTop: 10}}>
             <StatCard 
-              title="المبيعات المؤكدة (CA Réel)" // Titre mis à jour pour refléter la réalité
+              title="المبيعات المؤكدة (CA Réel)" 
               value={stats.totalRevenue} 
               icon="pie-chart" 
               color="#2ECC71" 
@@ -136,7 +159,6 @@ export default function AdminDashboard({ navigation, route }) {
 
         <Text style={[styles.sectionTitle, {marginTop: 30}]}>الإدارة (Gestion)</Text>
         
-        {/* NOUVEAU DEVIS (Pour Admin aussi, pratique) */}
         {isAdmin && (
           <MenuButton 
             title="إنشاء عرض جديد" 
@@ -148,7 +170,6 @@ export default function AdminDashboard({ navigation, route }) {
           />
         )}
 
-        {/* GESTION UTILISATEURS : Réservé aux Admins */}
         {isAdmin && (
           <MenuButton 
             title="المستخدمين (Utilisateurs)" 
@@ -160,7 +181,6 @@ export default function AdminDashboard({ navigation, route }) {
           />
         )}
 
-        {/* GESTION HÔTELS */}
         <MenuButton 
           title="قائمة الفنادق & الأسعار" 
           subtitle={isAdmin ? "Ajouter, modifier les prix" : "Consulter les tarifs uniquement"} 
@@ -170,7 +190,6 @@ export default function AdminDashboard({ navigation, route }) {
           color="#F3C764" 
         />
 
-        {/* PARAMÈTRES : Réservé aux Admins */}
         {isAdmin && (
           <MenuButton 
             title="إعدادات عامة" 
@@ -181,7 +200,6 @@ export default function AdminDashboard({ navigation, route }) {
           />
         )}
 
-        {/* ARCHIVES */}
         <MenuButton 
           title="أرشيف العروض" 
           subtitle={isAdmin ? "Tous les devis de l'agence" : "Mes devis uniquement"} 
@@ -212,5 +230,29 @@ const styles = StyleSheet.create({
   menuIcon: { width: 50, height: 50, borderRadius: 12, justifyContent: 'center', alignItems: 'center', marginLeft: 15 },
   menuTextContent: { flex: 1 },
   menuTitle: { color: '#FFF', fontSize: 16, fontWeight: 'bold', textAlign: 'right' },
-  menuSub: { color: '#8A95A5', fontSize: 12, marginTop: 2, textAlign: 'right' }
+  menuSub: { color: '#8A95A5', fontSize: 12, marginTop: 2, textAlign: 'right' },
+  
+  // Nouveau Style Alerte Web
+  alertBox: {
+    backgroundColor: '#E74C3C',
+    borderRadius: 16,
+    padding: 15,
+    marginBottom: 20,
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    shadowColor: "#E74C3C",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6
+  },
+  alertIcon: {
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    padding: 10,
+    borderRadius: 10,
+    marginLeft: 15
+  },
+  alertTitle: { color: '#FFF', fontWeight: 'bold', fontSize: 16, textAlign: 'right' },
+  alertDesc: { color: 'rgba(255,255,255,0.9)', fontSize: 12, textAlign: 'right' },
 });
